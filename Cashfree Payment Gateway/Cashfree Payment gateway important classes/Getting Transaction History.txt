@@ -1,0 +1,75 @@
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Service
+public class CashfreeTransactionService {
+
+    @Value("${cashfree.production.appId}")
+    private String appId;
+
+    @Value("${cashfree.production.secretKey}")
+    private String secretKey;
+
+    @Value("${cashfree.production.baseUrl}")
+    private String baseUrl;
+
+    private final RestTemplate restTemplate;
+
+    public CashfreeTransactionService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
+    /**
+     * Method to get the transaction history for a specific order.
+     * 
+     * @param orderId The unique order ID for which the transaction history is to be retrieved.
+     * @return The response containing transaction details.
+     */
+    public Map<String, Object> getTransactionHistory(String orderId) {
+        String url = baseUrl + "/api/v1/order/info/status?orderId=" + orderId;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("x-client-id", appId);
+        headers.set("x-client-secret", secretKey);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<String> requestEntity = new HttpEntity<>(headers);
+
+        ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, requestEntity, Map.class);
+
+        if (response.getStatusCode() == HttpStatus.OK) {
+            return response.getBody();
+        } else {
+            throw new RuntimeException("Failed to retrieve transaction history. Response Code: " 
+                    + response.getStatusCode());
+        }
+    }
+
+    public static void main(String[] args) {
+        // Example usage:
+        CashfreeTransactionService service = new CashfreeTransactionService(new RestTemplate());
+        String orderId = "ORDER12345";  // Replace with your order ID
+        Map<String, Object> transactionHistory = service.getTransactionHistory(orderId);
+        System.out.println("Transaction History: " + transactionHistory);
+    }
+}
+
+
+
+
+*****************************************************
+response
+
+{
+    "orderId": "ORDER12345",
+    "orderAmount": "500.00",
+    "txStatus": "SUCCESS",
+    "paymentMode": "UPI",
+    "txTime": "2023-09-20 12:34:56"
+}
+

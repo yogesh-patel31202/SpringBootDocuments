@@ -1,0 +1,92 @@
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Service
+public class CashfreeTransactionService {
+
+    @Value("${cashfree.production.appId}")
+    private String appId;
+
+    @Value("${cashfree.production.secretKey}")
+    private String secretKey;
+
+    @Value("${cashfree.production.baseUrl}")
+    private String baseUrl;
+
+    private final RestTemplate restTemplate;
+
+    public CashfreeTransactionService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
+    /**
+     * Method to create a new order and generate payment token.
+     *
+     * @param orderId   The unique order ID for the transaction.
+     * @param orderAmount The amount for the transaction.
+     * @param customerEmail The customer's email.
+     * @param customerPhone The customer's phone number.
+     * @return The response containing the payment token.
+     */
+    public Map<String, Object> createTransaction(String orderId, String orderAmount, String customerEmail, String customerPhone) {
+        String url = baseUrl + "/api/v2/cftoken/order";
+
+        // Build request body for creating the transaction
+        Map<String, String> requestBody = new HashMap<>();
+        requestBody.put("orderId", orderId);
+        requestBody.put("orderAmount", orderAmount);
+        requestBody.put("orderCurrency", "INR");
+        requestBody.put("customerEmail", customerEmail);
+        requestBody.put("customerPhone", customerPhone);
+
+        // Set the request headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("x-client-id", appId);
+        headers.set("x-client-secret", secretKey);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(requestBody, headers);
+
+        // Make the HTTP call to Cashfree API
+        ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, requestEntity, Map.class);
+
+        if (response.getStatusCode() == HttpStatus.OK) {
+            return response.getBody();
+        } else {
+            throw new RuntimeException("Failed to create transaction. Response Code: " 
+                    + response.getStatusCode());
+        }
+    }
+
+    public static void main(String[] args) {
+        // Example usage:
+        CashfreeTransactionService service = new CashfreeTransactionService(new RestTemplate());
+        String orderId = "ORDER12345";  // Replace with your order ID
+        String orderAmount = "500.00";  // Replace with the order amount
+        String customerEmail = "customer@example.com";  // Replace with the customer's email
+        String customerPhone = "9999999999";  // Replace with the customer's phone number
+
+        Map<String, Object> transactionResponse = service.createTransaction(orderId, orderAmount, customerEmail, customerPhone);
+        System.out.println("Transaction Response: " + transactionResponse);
+    }
+}
+
+
+
+
+
+
+*************************************
+response
+
+
+{
+    "status": "OK",
+    "message": "Token generated",
+    "cftoken": "generated_payment_token_here"
+}
